@@ -5,8 +5,8 @@
 
 |Model|ROUGE-1|
 |:---|---|
-|MLP-KTLim/llama-3-Korean-Bllossom-8B (without SFT)||
-|MLP-KTLim/llama-3-Korean-Bllossom-8B (with SFT)||
+|MLP-KTLim/llama-3-Korean-Bllossom-8B (without SFT)|0.15514|
+|MLP-KTLim/llama-3-Korean-Bllossom-8B (with SFT)|0.50358|
 ## 리포지토리 구조 (Repository Structure)
 ```
 # 학습에 필요한 리소스들을 보관하는 디렉토리
