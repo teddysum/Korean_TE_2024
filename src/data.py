@@ -16,25 +16,37 @@ class CustomDataset(Dataset):
         with open(fname, "r") as f:
             data = json.load(f)
 
-        def make_prompt_input(inp):
-            input_prompt = "다음은 함의분석 결과입니다. premise와 proposition의 관계에 대해 entailment 또는 contradiction 로 주석 되어 있습니다.\n"
+        def make_chat(inp):
+            chat = ["[Conversation]"]
+            keyword_sentence_id = inp['issue']['sentence_id']
 
-            premise = "premise: " + inp['premise']
-            input_prompt += premise + '\n'
+            # keyword_sentence 근처 40개의 대화만 포함
+            if len(inp['conversation']) > 40:
+                start_id = int(keyword_sentence_id.split('.')[-1]) - 20
+                if start_id < 0:
+                    start_id = 0
 
-            proposition = "premise: " + inp['proposition']
-            input_prompt += proposition + '\n'
+                end_id = start_id + 40
+                if end_id > len(inp['conversation']):
+                    end_id = len(inp['conversation'])
+                    start_id = end_id - 40
+            else:
+                start_id = 0
+                end_id = len(inp['conversation'])
 
-            label = "label: " + inp['label']
-            input_prompt += label + '\n'
+            for cvt in inp['conversation'][start_id:end_id]:
+                speaker = cvt['speaker']
+                utterance = cvt['utterance']
+                chat.append(f"화자 {speaker}: {utterance}")
+            chat = "\n".join(chat)
 
-            question = f"[Question]\n위 함의 분석 결과에서 premise와 proposition의 관계가 왜 label인지 설명문을 생성해 주세요."
-            final_input_prompt = input_prompt + "\n\n" + question
+            question = f"[Question]\n위 대화에서 토픽 {', '.join(inp['issue']['topic'])}에 대한 대화를 요약해주세요."
+            chat = chat + "\n\n" + question
 
-            return final_input_prompt
+            return chat
         
         for example in data:
-            chat = make_prompt_input(example["input"])
+            chat = make_chat(example["input"])
             message = [
                 {"role": "system", "content": PROMPT},
                 {"role": "user", "content": chat},
@@ -46,17 +58,14 @@ class CustomDataset(Dataset):
                 return_tensors="pt",
             )
 
-            if 'output' not in example:
-                example["output"] = ""
-
             target = example["output"]
             if target != "":
                 target += tokenizer.eos_token
-
             target = tokenizer(target,
                       return_attention_mask=False,
                       add_special_tokens=False,
-                      return_tensors="pt")
+                      return_tensors="pt",
+                      max_length=1024, truncation=True)
             target["input_ids"] = target["input_ids"].type(torch.int64)
 
             input_ids = torch.concat((source[0], target["input_ids"][0]))
